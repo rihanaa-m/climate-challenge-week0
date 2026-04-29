@@ -53,7 +53,7 @@ climate-challenge-week0/
 ## Git Hygiene
 
 - Data is intentionally excluded from version control (`data/` is ignored).
-- App reads CSVs locally at runtime; no dataset files are committed.
+- App reads CSVs locally at runtime; if no CSVs are found, it falls back to deterministic demo data so the dashboard still runs.
 
 ## Development Process
 

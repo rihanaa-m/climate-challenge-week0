@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+import numpy as np
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data"
@@ -59,6 +60,58 @@ def load_data() -> pd.DataFrame:
     combined = combined.sort_values(["COUNTRY", "DATE"]).reset_index(drop=True)
     combined["COUNTRY"] = combined["COUNTRY"].astype(str).str.title()
     return combined
+
+
+def generate_demo_data(
+    countries: list[str] | None = None,
+    start_year: int = 2000,
+    end_year: int = 2005,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """Generate deterministic demo data so the dashboard works without CSVs.
+
+    This is useful for code-only submissions and for Streamlit Community Cloud
+    deploys where `data/` is not committed.
+    """
+    rng = np.random.default_rng(seed)
+    if not countries:
+        countries = [name.title() for name in PREFERRED_COUNTRIES]
+
+    dates = pd.date_range(f"{start_year}-01-01", f"{end_year}-12-01", freq="MS")
+
+    rows: list[dict[str, object]] = []
+    for country in countries:
+        # Simple seasonal pattern + noise for visual realism.
+        month = dates.month.values
+        seasonal = np.sin((month - 1) / 12 * 2 * np.pi)
+
+        t2m = 25 + 5 * seasonal + rng.normal(0, 1.2, size=len(dates))
+        prectotcorr = np.clip(120 + 70 * seasonal + rng.normal(0, 25, size=len(dates)), 0, None)
+        rh2m = np.clip(60 + 15 * seasonal + rng.normal(0, 6, size=len(dates)), 0, 100)
+
+        for dt, t, p, h in zip(dates, t2m, prectotcorr, rh2m):
+            rows.append(
+                {
+                    "COUNTRY": country,
+                    "DATE": dt,
+                    "SOURCE": "demo",
+                    "YEAR_INT": int(dt.year),
+                    "MONTH": int(dt.month),
+                    "T2M": float(t),
+                    "PRECTOTCORR": float(p),
+                    "RH2M": float(h),
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def load_data_with_demo_fallback() -> pd.DataFrame:
+    """Load real CSV data; if unavailable, fall back to deterministic demo data."""
+    df = load_data()
+    if df.empty:
+        return generate_demo_data()
+    return df
 
 
 def get_country_options(df: pd.DataFrame) -> list[str]:

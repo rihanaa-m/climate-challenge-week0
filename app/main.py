@@ -3,9 +3,19 @@ import seaborn as sns
 import streamlit as st
 
 try:
-    from app.utils import filter_data, get_country_options, get_monthly_trends, load_data
+    from app.utils import (
+        filter_data,
+        get_country_options,
+        get_monthly_trends,
+        load_data_with_demo_fallback,
+    )
 except ImportError:
-    from utils import filter_data, get_country_options, get_monthly_trends, load_data
+    from utils import (
+        filter_data,
+        get_country_options,
+        get_monthly_trends,
+        load_data_with_demo_fallback,
+    )
 
 st.set_page_config(page_title="Climate Insights Dashboard", page_icon="🌍", layout="wide")
 
@@ -13,7 +23,7 @@ st.set_page_config(page_title="Climate Insights Dashboard", page_icon="🌍", la
 @st.cache_data(show_spinner=False)
 def get_data():
     """Load dashboard data once per session."""
-    return load_data()
+    return load_data_with_demo_fallback()
 
 
 def main():
@@ -21,12 +31,12 @@ def main():
     st.caption("Interactive climate exploration by country, year, and variable")
 
     df = get_data()
-    if df.empty:
-        st.error(
-            "No valid CSV data found. Add climate CSV files in `data/` "
-            "or the project root, then refresh."
-        )
-        st.stop()
+    is_demo = (
+        "SOURCE" in df.columns
+        and df["SOURCE"].astype(str).str.lower().eq("demo").all()
+    )
+    if is_demo:
+        st.info("Showing demo data (CSV files not found). Add CSVs in `data/` or the repo root for real results.")
 
     countries = get_country_options(df)
     min_year = int(df["YEAR_INT"].min())
